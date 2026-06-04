@@ -2,8 +2,23 @@
 from fasthtml.common import *
 from fasthtml.fastapp import fast_app
 import uvicorn
+import webbrowser
+from multiprocessing import freeze_support
+from fasthtml.common import serve
+import socket
 
-app, rt = fast_app()
+sock = socket.socket()
+sock.bind(("", 0))
+port = sock.getsockname()[1]
+
+def open_browser():
+    webbrowser.open(f"http://127.0.0.1:{port}/")
+
+async def lifespan(app):
+    open_browser()
+    yield
+
+my_app, rt = fast_app(lifespan=lifespan)
 
 # JavaScript with a dynamic popup notification system
 js_code = """
@@ -170,6 +185,20 @@ def get():
 
     return main_layout + compatibility_check
 
+def main():
+    uvicorn.run(
+        my_app,
+        host="127.0.0.1",
+        port=port,
+        reload=False,
+        reload_includes=["*.py", "*.css", "*.js"],
+    )
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # This is necessary for multiprocessing to work correctly in a frozen .exe on Windows
+    freeze_support()
+    main()
+
+else:
+    # If being imported (e.g., by 'fasthtml serve' or Docker)
+    serve()
